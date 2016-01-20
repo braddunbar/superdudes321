@@ -6,13 +6,25 @@
   <style>
     h1 { color: purple; }
     p { color: #095300; }
+    .memes {
+      animation: spin 5s infinite;
+    }
+    @keyframes spin {
+      from {
+        transform:rotate(0deg);
+      }
+      to {
+        transform:rotate(360deg);
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Superdudes321</h1>
-  <p>
+  <span class='memes'>
     DANK MEMES
-  </p>
+  </span>
+  <br>
   <img src='/finn.jpg'>
 </body>
 </html>
