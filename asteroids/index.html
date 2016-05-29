@@ -1,0 +1,287 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Asteroids</title>
+  <link rel='shortcut icon' href='./favicon.ico'>
+  <style>
+    #container {
+      border: solid 1px black;
+      height: 500px;
+      margin: 0 auto;
+      position: relative;
+      width: 500px;
+    }
+    #game {
+      height: 500px;
+      width: 500px;
+    }
+    #score {
+      bottom: 5px;
+      color: white;
+      font-family: courier;
+      left: 5px;
+      position: absolute;
+    }
+  </style>
+</head>
+<body>
+  <div id='container'>
+    <canvas id='game' width='500' height='500'></canvas>
+    <span id='score'></span>
+  </div>
+  <script>
+    // DOM Elements
+    const game = document.getElementById('game')
+    const score = document.getElementById('score')
+
+    // Context
+    const c = game.getContext('2d')
+
+    const width = 500
+    const height = 500
+
+    const keys = {}
+    const keyNames = {
+      32: 'space',
+      37: 'left',
+      38: 'up',
+      39: 'right',
+      40: 'down',
+      65: 'a',
+      68: 'd',
+      83: 's',
+      87: 'w'
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const code = event.which
+      const name = keyNames[code]
+      keys[code] = true
+      if (name) keys[name] = true
+    })
+
+    document.addEventListener('keyup', (event) => {
+      const code = event.which
+      const name = keyNames[code]
+      delete keys[code]
+      if (name) delete keys[name]
+    })
+
+    const hits = (a, b) => {
+      return (
+        a.left <= b.right &&
+        a.right >= b.left &&
+        a.top <= b.bottom &&
+        a.bottom >= b.top
+      )
+    }
+
+    const requestInterval = (f, delay) => {
+      let start = null
+      let clear = false
+      const check = (now) => {
+        if (!start) start = now
+        if (now - start >= delay) {
+          start = now
+          f()
+        }
+        if (!clear) requestAnimationFrame(check)
+      }
+      requestAnimationFrame(check)
+      return {clear: () => {clear = true}}
+    }
+
+    class Player {
+
+      get size () { return 10 }
+
+      get left () { return this.x }
+
+      get right () { return this.x + this.size }
+
+      get top () { return this.y }
+
+      get bottom () { return this.y + this.size }
+
+      get speed () { return 3 }
+
+      get shotDelay () { return 300 }
+
+      constructor () {
+        this.x = width / 2
+        this.y = height / 2
+        this.score = 0
+      }
+
+      addPoints (points) {
+        this.score += points
+        score.innerHTML = this.score
+      }
+
+      draw (now) {
+        // Left
+        if ((keys.left || keys.a) && this.x > 0) {
+          this.x -= this.speed
+        }
+
+        // Down
+        if ((keys.down || keys.s) && this.y < height - this.size) {
+          this.y += this.speed
+        }
+
+        // Right
+        if ((keys.right || keys.d) && this.x < width - this.size) {
+          this.x += this.speed
+        }
+
+        // Up
+        if ((keys.up || keys.w) && this.y > 0) {
+          this.y -= this.speed
+        }
+
+        // Shoot
+        if (keys.space) {
+          if (!this.lastShot || now - this.lastShot > this.shotDelay) {
+            this.lastShot = now
+            bullets.push(new Bullet(this.x + this.size / 2, this.y))
+          }
+        }
+
+        c.fillStyle = '#abc'
+        c.strokeStyle = '#abc'
+        c.lineWidth = 1
+        c.beginPath()
+        c.moveTo(this.x, this.y + this.size)
+        c.lineTo(this.x + this.size / 2, this.y)
+        c.lineTo(this.x + this.size, this.y + this.size)
+        c.lineTo(this.x, this.y + this.size)
+        c.stroke()
+        c.fill()
+      }
+
+    }
+
+    class Bullet {
+
+      get speed () { return 5 }
+
+      get left () { return this.x }
+
+      get right () { return this.x }
+
+      get top () { return this.y }
+
+      get bottom () { return this.y }
+
+      get width () { return 5 }
+
+      get height () { return 6 }
+
+      constructor (x, y) {
+        this.x = x
+        this.y = y
+      }
+
+      draw (now) {
+        this.y -= this.speed
+
+        c.lineWidth = this.width
+        c.strokeStyle = '#faa'
+        c.beginPath()
+        c.moveTo(this.x, this.y - this.height / 2)
+        c.lineTo(this.x, this.y + this.height / 2)
+        c.stroke()
+        c.fill()
+      }
+
+      isOnScreen () {
+        return this.y >= 0
+      }
+
+    }
+
+    class Asteroid {
+
+      get left () { return this.x - this.radius }
+
+      get right () { return this.x + this.radius }
+
+      get top () { return this.y - this.radius }
+
+      get bottom () { return this.y + this.radius }
+
+      constructor () {
+        this.x = Math.random() * width
+        this.y = 0
+
+        this.drift = Math.random() * 2 - 1
+        this.speed = Math.random() * 3 + 3
+        this.radius = Math.random() * 5 + 5
+      }
+
+      draw (now) {
+        this.x += this.drift
+        this.y += this.speed
+
+        c.fillStyle = '#deb887'
+        c.strokeStyle = '#deb887'
+        c.beginPath()
+        c.arc(this.x, this.y, this.radius, 0, 2 * Math.PI)
+        c.closePath()
+        c.fill()
+      }
+
+      isOnScreen () {
+        return this.y <= height + this.radius
+      }
+
+    }
+
+    const player = new Player()
+
+    let bullets = []
+    let asteroids = []
+
+    const draw = (now) => {
+
+      // Clear the canvas
+      c.fillStyle = '#333'
+      c.fillRect(0, 0, width, height)
+
+      // Bullets
+      bullets = bullets.filter((bullet) => {
+        bullet.draw(now)
+        return bullet.isOnScreen()
+      })
+
+      // Asteroids
+      asteroids = asteroids.filter((asteroid) => {
+        asteroid.draw(now)
+        for (const bullet of bullets) {
+          if (hits(bullet, asteroid)) {
+            player.addPoints(150)
+            return false
+          }
+        }
+        return asteroid.isOnScreen()
+      })
+
+      player.draw(now)
+
+      // Player hit?
+      for (const asteroid of asteroids) {
+        if (hits(asteroid, player)) return
+      }
+
+      requestAnimationFrame(draw)
+    }
+
+    requestInterval(() => {
+      asteroids.push(new Asteroid())
+    }, 200)
+
+    requestAnimationFrame(draw)
+  </script>
+</body>
+</html>
